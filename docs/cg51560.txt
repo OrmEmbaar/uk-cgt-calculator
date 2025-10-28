@@ -1,0 +1,58 @@
+CG51560 - Share identification rules for capital gains tax from 6.4.2008: the “same day” and “bed and breakfast” identification rules
+The “same day” rule TCGA92/S105(1)
+The “bed and breakfast” rule TCGA92/S106A(5) and (5A)
+EXAMPLE 1
+EXAMPLE 2
+EXAMPLE 3
+
+The “same day” rule TCGA92/S105(1)
+All shares of the same class in the same company acquired by the same person on the same day and in the same capacity are treated as though they were acquired by a single transaction, TCGA92/S105 (1)(a).
+
+All shares of the same class in the same company disposed of by the same person on the same day and in the same capacity are also treated as though they were disposed of by a single transaction, TCGA92/S105 (1)(a).
+
+If there is an acquisition and a disposal on the same day the disposal is identified first against the acquisition on the same day, TCGA92/S105 (1)(b).
+
+If the number of shares disposed of exceeds the number acquired on the same day the excess shares will be identified in the normal way.
+
+If the number of shares acquired exceeds the number sold on the same day the surplus is added to the Section 104 holding, unless they are identified with disposals under the ‘bed and breakfast’ rule, see below.
+
+Note that an individual may make an election under TCGAS92/S105A to modify this rule where he or she has acquired shares issued under certain share incentive schemes and other shares of the same class on the same day. See CG56460+.
+
+The “bed and breakfast” rule TCGA92/S106A(5) and (5A)
+The rule was introduced in 1998 to counter what is known as 'bed and breakfasting' of shares. For a general discussion on `bed and breakfasting' see CG13350.
+
+Disposals must be identified with acquisitions of shares
+
+of the same class, see CG50203
+acquired by the same person in the same capacity, and
+acquired within the 30 days after the disposal.
+This rule has priority over all other identification rules except the `same day' rule in TCGA92/S105(1), see above.
+
+This ‘bed and breakfasting’ rule does not apply if the person who makes the disposal was not resident in the United Kingdom for tax purposes at the time of the relevant acquisition if that acquisition was on or after 22 March 2006, irrespective of the time of the disposal. Where this is the case, the usual share identification rules apply, see CG51555. Where the 30 day identification rule applies it will normally have the effect of reducing or eliminating the gain or loss which would have arisen if the disposal had been identified with shares already held.
+
+The three requirements above (same class, same capacity, later acquisition within 30 days) must be met for the rule to operate. For example, a disposal by an individual in a personal capacity followed by an acquisition as trustee of a trust would not be subject to the rule. Other transactions which do not come within the scope of the rule are
+
+a disposal of shares followed by a company reorganisation (such as a rights issue or bonus issue) to which TCGA92/S127 applies, see CG51700+, with the result that the additional shares are not treated as acquired within the 30 days following the disposal
+a disposal of rights which is treated as a part disposal of an interest in shares under TCGA92/S122 and S123, see CG57835+, followed by an acquisition of shares (with no rights attached).
+The following examples illustrate how the 30 day identification rule works.
+
+Top of page
+
+EXAMPLE 1
+Miss A has a Section 104 holding of 1,000 ordinary £1 shares in X plc. On 1 July 2011 she sells the whole 1,000 shares. She buys the same number of ordinary £1 shares in X plc on 31 July 2011.
+
+The acquisition is within the 30 day period after the disposal, so the disposal and later acquisition are matched in priority to identifying the disposal with the shares in the Section 104 holding.
+
+Top of page
+
+EXAMPLE 2
+Mr B has a Section 104 holding of 2,500 ordinary 10p shares in Y plc. On 27 March 2012 he sells 1,700 shares. On 30 March 2012 he buys another 500 10p shares in Y plc.
+
+The later acquisition of 500 shares does not become part of the Section 104 holding. They are identified with 500 of the shares disposed of on 27 March. The remaining 1,200 shares sold are identified with part of the Section 104 holding.
+
+Top of page
+
+EXAMPLE 3
+Mrs C has a Section 104 holding of 10,000 ordinary 25p shares in Z plc. On 28 February 2009 she sells 2,000 shares. On 31 March 2009 she buys another 3,000 of the same shares.
+
+Mrs C's acquisition is not within the 30 days after the disposal. So her disposal cannot be identified under the 30 day rule with 2,000 of the 3,000 shares bought on 31 March. The shares disposed of are therefore identified with part of the Section 104 holding.
