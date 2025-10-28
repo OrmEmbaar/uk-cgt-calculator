@@ -165,9 +165,11 @@ export function match30Day(
         const proportionOfAcq = quantityToMatch.dividedBy(acq.quantity);
         const proportionOfDisposal = quantityToMatch.dividedBy(disposal.quantity);
 
-        const costBasisGBP = acq.price
-            .times(quantityToMatch)
-            .plus(acq.fee.times(proportionOfAcq))
+        // Calculate total acquisition cost first (at full precision), then apply proportion
+        // This avoids rounding errors from: (price * qty) + (fee * proportion)
+        const totalAcqCost = acq.price.times(acq.quantity).plus(acq.fee);
+        const costBasisGBP = totalAcqCost
+            .times(proportionOfAcq)
             .times(acq.exchangeRate)
             .toDecimalPlaces(GBP_DECIMAL_PLACES);
 
@@ -225,9 +227,10 @@ export function matchLater(
         const proportionOfAcq = quantityToMatch.dividedBy(acq.quantity);
         const proportionOfDisposal = quantityToMatch.dividedBy(disposal.quantity);
 
-        const costBasisGBP = acq.price
-            .times(quantityToMatch)
-            .plus(acq.fee.times(proportionOfAcq))
+        // Calculate total acquisition cost first (at full precision), then apply proportion
+        const totalAcqCost = acq.price.times(acq.quantity).plus(acq.fee);
+        const costBasisGBP = totalAcqCost
+            .times(proportionOfAcq)
             .times(acq.exchangeRate)
             .toDecimalPlaces(GBP_DECIMAL_PLACES);
 
