@@ -91,6 +91,17 @@ try {
 -   **Exchange Rate**: Must be greater than 0
 -   **Fee**: Must be a non-negative number
 
+## Vanguard Fund Name Changes & Character Encoding
+
+Vanguard occasionally renames funds, and CSV exports may have character encoding issues (e.g., `£` becomes `�`). The parser uses pattern matching to handle both issues:
+
+-   **Sterling Short-Term Money Market Fund**: Uses pattern matching for any fund name containing "Short-Term Money Market" AND ("Vanguard" OR "Sterling")
+    -   Handles original name: "Vanguard £ Short-Term Money Market Fund Investor GBP Inc"
+    -   Handles rebranded name: "Sterling Short-Term Money Market Fund - Income"
+    -   Handles encoding issues: "Vanguard � Short-Term Money Market..." (corrupted £ symbol)
+
+All variations are automatically mapped to the same asset identifier (`STERLING_SHORT-TERM_MONEY_MARKET`) via pattern matching, so buys and sells are correctly matched regardless of fund rebranding or character encoding issues.
+
 ## Creating Custom Parsers
 
 Extend `BaseCSVParser` to create parsers for broker-specific CSV formats:
@@ -133,6 +144,7 @@ The `BaseCSVParser` provides these protected methods for custom parsers:
 ```typescript
 import { RawCSVParser } from './lib/parse';
 import { calculateCGTMultipleAssets } from './lib/cgt';
+import { getTaxYear } from './lib/utils/tax-year';
 import { readFile } from 'fs/promises';
 
 // Read and parse CSV
@@ -146,5 +158,14 @@ const resultsByAsset = calculateCGTMultipleAssets(transactions);
 // Display results
 for (const [asset, result] of resultsByAsset) {
     console.log(`${asset}: Net gain/loss = £${result.netGainLoss}`);
+}
+
+// Group by tax year (UK tax year: April 6 to April 5)
+const disposalsByTaxYear = new Map();
+for (const [asset, result] of resultsByAsset) {
+    for (const disposal of result.disposals) {
+        const taxYear = getTaxYear(disposal.disposal.date);
+        // ... process by tax year
+    }
 }
 ```
