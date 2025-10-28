@@ -109,7 +109,7 @@ export class VanguardParser extends BaseCSVParser {
             date: DateTime;
             dateKey: string;
             asset: string;
-            details: any;
+            details: TransactionDetails | null;
             amount: Decimal;
             quantity: Decimal;
             price: Decimal;
@@ -191,7 +191,7 @@ export class VanguardParser extends BaseCSVParser {
 
         // Second pass: match fees to transactions and create Transaction objects
         for (const parsedRow of parsedRows) {
-            if (parsedRow.isFee) continue; // Skip fee rows
+            if (parsedRow.isFee || !parsedRow.details) continue; // Skip fee rows
 
             // Find matching fee: same date and same asset (or same date if asset unknown)
             let fee = new Decimal(0);
