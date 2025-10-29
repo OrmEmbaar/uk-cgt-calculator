@@ -7,6 +7,7 @@ import { isInTaxYear } from './tax-year';
 export interface CGTResultRow {
     date: string;
     asset: string;
+    assetFullName?: string;
     quantitySold: string;
     proceedsGBP: string;
     costBasisGBP: string;
@@ -37,6 +38,7 @@ export function resultsToCSV(
             rows.push({
                 date: disposal.disposal.date.toISODate() || '',
                 asset,
+                assetFullName: disposal.disposal.assetFullName,
                 quantitySold: disposal.disposal.quantity.toFixed(4),
                 proceedsGBP: disposal.totalProceedsGBP.toFixed(2),
                 costBasisGBP: disposal.totalCostBasisGBP.toFixed(2),
@@ -58,9 +60,15 @@ export function resultsToCSV(
     const csvLines = [headers.join(',')];
 
     for (const row of rows) {
+        // Use full name if available, otherwise use identifier
+        const assetName = row.assetFullName || row.asset;
+
+        // Escape asset name if it contains commas
+        const escapedAssetName = assetName.includes(',') ? `"${assetName}"` : assetName;
+
         const line = [
             row.date,
-            row.asset,
+            escapedAssetName,
             row.quantitySold,
             row.proceedsGBP,
             row.costBasisGBP,

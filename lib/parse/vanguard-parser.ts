@@ -209,6 +209,7 @@ export class VanguardParser extends BaseCSVParser {
                 date: parsedRow.date,
                 type: parsedRow.details.type,
                 asset: parsedRow.asset,
+                assetFullName: parsedRow.details.assetName, // Store full name for display
                 quantity: parsedRow.quantity,
                 price: parsedRow.price,
                 currency: this.currency,
@@ -321,32 +322,39 @@ export class VanguardParser extends BaseCSVParser {
         }
 
         // For OEIC, generate identifier from fund name
-        // Remove common words and patterns
+        // Strategy: Remove only truly generic/boilerplate words, keep all meaningful content
         const cleaned = assetName
-            // Remove patterns like "ex-U.K.", "ex-Japan"
+            // Remove "ex-U.K." and "ex-Japan" patterns
             .replace(/\s+ex-U\.K\./gi, '')
-            .replace(/\s+ex-[A-Za-z]+/gi, '')
-            // Remove common fund words
-            .replace(
-                /\s+(Index|Fund|Accumulation|Distributing|Unit Trust|Stock|Equity|Vanguard|Funds|PLC)\b/gi,
-                ''
-            )
-            // Remove standalone hyphens and clean up
-            .replace(/\s+-\s*/g, ' ')
+            .replace(/\s+ex-Japan/gi, '')
+            // Remove only truly generic/boilerplate words (legal entities, fund types, share class)
+            .replace(/\s+(Index|Fund|Accumulation|Distributing|Unit Trust|Vanguard|Funds|PLC)\b/gi, '')
+            // Remove standalone hyphens between words but keep compound words
+            .replace(/\s+-\s+/g, ' ')
+            // Clean up multiple spaces
             .replace(/\s+/g, ' ')
             .trim();
 
-        // Split into words (preserving hyphens within words) and take first 3 significant ones
+        // Convert to identifier format (underscores, uppercase, no periods)
+        // Don't truncate - keep all meaningful words
         let identifier = cleaned
             .split(/\s+/)
             .filter((word) => word.length > 0 && word !== '-')
-            .slice(0, 3) // Take first 3 significant words
             .join('_')
+            .replace(/\./g, '') // Remove periods (U.K. → UK, U.S. → US)
             .toUpperCase();
 
-        // If identifier is too short or empty, use original name (trimmed)
-        if (identifier.length < 3) {
-            identifier = assetName.replace(/\s+/g, '_').substring(0, 30).toUpperCase();
+        // If empty, use sanitized original name
+        if (!identifier || identifier.length < 3) {
+            identifier = assetName
+                .replace(/\s+/g, '_')
+                .replace(/[^A-Z0-9_-]/gi, '') // Remove special chars except underscore and hyphen
+                .toUpperCase();
+        }
+
+        // Limit total length to 50 chars (for reasonable display)
+        if (identifier.length > 50) {
+            identifier = identifier.substring(0, 50);
         }
 
         return identifier;

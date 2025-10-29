@@ -16,6 +16,8 @@ export interface Transaction {
     type: TransactionType;
     /** Asset identifier (e.g., ticker symbol) */
     asset: string;
+    /** Full asset name for display purposes (optional) */
+    assetFullName?: string;
     /** Quantity of shares/units */
     quantity: Decimal;
     /** Price per share/unit in transaction currency */

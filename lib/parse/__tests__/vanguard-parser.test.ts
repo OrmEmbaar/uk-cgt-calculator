@@ -13,7 +13,7 @@ describe('VanguardParser', () => {
 
             expect(transactions).toHaveLength(1);
             expect(transactions[0].type).toBe('BUY');
-            expect(transactions[0].asset).toBe('FTSE_DEVELOPED_EUROPE');
+            expect(transactions[0].asset).toBe('FTSE_DEVELOPED_EUROPE_EQUITY');
             expect(transactions[0].quantity.equals(new Decimal('10.5'))).toBe(true);
             expect(transactions[0].price.equals(new Decimal('1500').div('10.5'))).toBe(true);
             expect(transactions[0].currency).toBe('GBP');
@@ -57,7 +57,7 @@ describe('VanguardParser', () => {
 
             expect(transactions).toHaveLength(1);
             expect(transactions[0].type).toBe('SELL');
-            expect(transactions[0].asset).toBe('JAPAN');
+            expect(transactions[0].asset).toBe('JAPAN_STOCK');
             expect(transactions[0].quantity.equals(new Decimal('20.5'))).toBe(true);
         });
 
@@ -229,7 +229,7 @@ describe('VanguardParser', () => {
             const parser = new VanguardParser();
             const transactions = await parser.parse(csv);
 
-            expect(transactions[0].asset).toBe('EMERGING_MARKETS');
+            expect(transactions[0].asset).toBe('EMERGING_MARKETS_STOCK');
         });
 
         it('should generate identifier for Pacific ex-Japan fund', async () => {
@@ -239,7 +239,7 @@ describe('VanguardParser', () => {
             const parser = new VanguardParser();
             const transactions = await parser.parse(csv);
 
-            expect(transactions[0].asset).toBe('PACIFIC');
+            expect(transactions[0].asset).toBe('PACIFIC_STOCK');
         });
 
         it('should generate identifier for Global Small-Cap', async () => {
@@ -259,7 +259,8 @@ describe('VanguardParser', () => {
             const parser = new VanguardParser();
             const transactions = await parser.parse(csv);
 
-            expect(transactions[0].asset).toBe('U.S.');
+            expect(transactions[0].asset).toBe('US_EQUITY');
+            expect(transactions[0].assetFullName).toBe('U.S. Equity Index Fund - Accumulation');
         });
     });
 
@@ -451,9 +452,9 @@ describe('VanguardParser', () => {
 
             expect(transactions).toHaveLength(4);
             expect(transactions[0].type).toBe('BUY');
-            expect(transactions[0].asset).toBe('FTSE_DEVELOPED_EUROPE');
+            expect(transactions[0].asset).toBe('FTSE_DEVELOPED_EUROPE_EQUITY');
             expect(transactions[1].type).toBe('BUY');
-            expect(transactions[1].asset).toBe('EMERGING_MARKETS');
+            expect(transactions[1].asset).toBe('EMERGING_MARKETS_STOCK');
             expect(transactions[2].type).toBe('BUY');
             expect(transactions[2].fee.equals(new Decimal(7.5))).toBe(true);
             expect(transactions[3].type).toBe('SELL');
