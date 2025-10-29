@@ -4,6 +4,7 @@ import { isInTaxYear } from '@/lib/utils/tax-year';
 interface DisposalRow {
     date: string;
     asset: string;
+    assetFullName?: string;
     quantitySold: string;
     proceedsGBP: string;
     costBasisGBP: string;
@@ -35,6 +36,7 @@ export default function ResultsTable({ resultsByAsset, taxYear }: ResultsTablePr
             rows.push({
                 date: disposal.disposal.date.toISODate() || '',
                 asset,
+                assetFullName: disposal.disposal.assetFullName,
                 quantitySold: disposal.disposal.quantity.toFixed(4),
                 proceedsGBP: disposal.totalProceedsGBP.toFixed(2),
                 costBasisGBP: disposal.totalCostBasisGBP.toFixed(2),
@@ -84,8 +86,8 @@ export default function ResultsTable({ resultsByAsset, taxYear }: ResultsTablePr
                                 <td className="px-4 py-3 font-medium text-zinc-900 dark:text-zinc-100">
                                     {row.date}
                                 </td>
-                                <td className="px-4 py-3 font-mono text-zinc-700 dark:text-zinc-300">
-                                    {row.asset}
+                                <td className="px-4 py-3 text-zinc-700 dark:text-zinc-300">
+                                    {row.assetFullName || row.asset}
                                 </td>
                                 <td className="px-4 py-3 text-right font-mono text-zinc-700 dark:text-zinc-300">
                                     {row.quantitySold}

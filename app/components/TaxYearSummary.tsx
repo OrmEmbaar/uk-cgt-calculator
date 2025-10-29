@@ -72,50 +72,59 @@ export default function TaxYearSummary({ resultsByAsset, taxYear }: TaxYearSumma
                         Breakdown by Asset
                     </h3>
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-                        {Array.from(resultsByAsset.entries()).map(([asset, result]) => (
-                            <div
-                                key={asset}
-                                className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-black"
-                            >
-                                <h4 className="mb-3 font-mono text-sm font-semibold text-zinc-700 dark:text-zinc-300">
-                                    {asset}
-                                </h4>
-                                <div className="space-y-2 text-sm">
-                                    <div className="flex justify-between">
-                                        <span className="text-zinc-600 dark:text-zinc-400">Gains:</span>
-                                        <span className="font-mono font-medium text-green-600 dark:text-green-400">
-                                            £{result.totalGains.toFixed(2)}
-                                        </span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-zinc-600 dark:text-zinc-400">Losses:</span>
-                                        <span className="font-mono font-medium text-red-600 dark:text-red-400">
-                                            £{result.totalLosses.toFixed(2)}
-                                        </span>
-                                    </div>
-                                    <div className="flex justify-between border-t border-zinc-200 pt-2 dark:border-zinc-800">
-                                        <span className="font-medium text-zinc-700 dark:text-zinc-300">
-                                            Net:
-                                        </span>
-                                        <span
-                                            className={`font-mono font-semibold ${
-                                                result.netGainLoss.greaterThan(0)
-                                                    ? 'text-green-600 dark:text-green-400'
-                                                    : result.netGainLoss.lessThan(0)
-                                                    ? 'text-red-600 dark:text-red-400'
-                                                    : 'text-zinc-700 dark:text-zinc-300'
-                                            }`}
-                                        >
-                                            £{result.netGainLoss.toFixed(2)}
-                                        </span>
-                                    </div>
-                                    <div className="text-xs text-zinc-500 dark:text-zinc-400">
-                                        {result.disposals.length} disposal
-                                        {result.disposals.length !== 1 ? 's' : ''}
+                        {Array.from(resultsByAsset.entries()).map(([asset, result]) => {
+                            // Get full name from first disposal if available
+                            const fullName = result.disposals[0]?.disposal.assetFullName || asset;
+
+                            return (
+                                <div
+                                    key={asset}
+                                    className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-black"
+                                >
+                                    <h4 className="mb-3 text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+                                        {fullName}
+                                    </h4>
+                                    <div className="space-y-2 text-sm">
+                                        <div className="flex justify-between">
+                                            <span className="text-zinc-600 dark:text-zinc-400">
+                                                Gains:
+                                            </span>
+                                            <span className="font-mono font-medium text-green-600 dark:text-green-400">
+                                                £{result.totalGains.toFixed(2)}
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-zinc-600 dark:text-zinc-400">
+                                                Losses:
+                                            </span>
+                                            <span className="font-mono font-medium text-red-600 dark:text-red-400">
+                                                £{result.totalLosses.toFixed(2)}
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-between border-t border-zinc-200 pt-2 dark:border-zinc-800">
+                                            <span className="font-medium text-zinc-700 dark:text-zinc-300">
+                                                Net:
+                                            </span>
+                                            <span
+                                                className={`font-mono font-semibold ${
+                                                    result.netGainLoss.greaterThan(0)
+                                                        ? 'text-green-600 dark:text-green-400'
+                                                        : result.netGainLoss.lessThan(0)
+                                                        ? 'text-red-600 dark:text-red-400'
+                                                        : 'text-zinc-700 dark:text-zinc-300'
+                                                }`}
+                                            >
+                                                £{result.netGainLoss.toFixed(2)}
+                                            </span>
+                                        </div>
+                                        <div className="text-xs text-zinc-500 dark:text-zinc-400">
+                                            {result.disposals.length} disposal
+                                            {result.disposals.length !== 1 ? 's' : ''}
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 </div>
             )}
