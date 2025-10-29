@@ -1,0 +1,58 @@
+---
+description: Enforces that all imports must be at the top of TypeScript files. Inline imports (using await import() or require() inside function bodies) are code smell and should be avoided unless there is a compelling technical reason such as circular dependency resolution or dynamic code splitting.
+globs:
+alwaysApply: false
+---
+
+# No Inline Imports Rule
+
+## Critical Rules
+
+- All imports MUST be declared at the top of the file before any code
+- NEVER use `await import()` inside function bodies unless absolutely necessary
+- NEVER use `require()` inside function bodies
+- If you need dynamic imports for code splitting, document why in a comment
+- The only valid exceptions are:
+  - Breaking circular dependencies (must be commented)
+  - Dynamic code splitting in frontend (must be commented)
+  - Plugin systems that require runtime loading (must be commented)
+
+## Examples
+
+<example>
+  // Good - Imports at top
+  import { logger } from '../logger.js';
+  import { getCurrentPeriod, ALL_TIME_PERIOD } from '../utils/periods.js';
+  
+  class MyService {
+    private someMethod() {
+      const period = getCurrentPeriod();
+      // Use imports normally
+    }
+  }
+</example>
+
+<example type="invalid">
+  // Bad - Inline import inside method
+  class MyService {
+    private async someMethod() {
+      const { getCurrentPeriod } = await import('../utils/periods.js');
+      const period = getCurrentPeriod();
+    }
+  }
+  
+  // Bad - No justification for dynamic import
+  function processData() {
+    const utils = require('../utils/helper.js');
+    return utils.process();
+  }
+</example>
+
+<example>
+  // Acceptable - Dynamic import with clear reason
+  async function loadPlugin(name: string) {
+    // Dynamic import required: plugin name determined at runtime
+    const plugin = await import(`./plugins/${name}.js`);
+    return plugin;
+  }
+</example>

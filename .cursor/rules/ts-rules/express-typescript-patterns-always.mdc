@@ -1,0 +1,106 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+
+# Express + TypeScript Best Practices
+
+## Critical Rules
+
+### Type Safety - No Escape Hatches
+
+- **NEVER use `as any` casts** - If types don't match, fix the types, don't bypass them
+- **NEVER use non-null assertions (`!`)** - Use explicit checks with proper error handling instead
+- Use assertion signatures (`asserts x is T`) for type guards that validate runtime conditions
+- Let TypeScript infer return types when explicit types conflict with the type system
+
+### Dependency Injection Over Global State
+
+- **NEVER use `app.set()` for database connections or services** - Pass dependencies as function parameters
+- Use factory pattern for handlers: `function createHandler(deps) { return (req, res, next) => {} }`
+- Store typed dependencies in closures, not in untyped Express app locals
+
+### Express Module Augmentation
+
+- When augmenting `express` module's `Request` interface, make new properties **optional** (`prop?: Type`)
+- Required properties cause conflicts with Express's `RequestHandler` type
+- Use type guards to narrow optional properties when needed
+
+### Error Handling
+
+- Throw typed error classes that extend `Error` with `statusCode` and `code` properties
+- Use `next(error)` to pass errors to error handling middleware
+- Never silently fail or return undefined for missing required data
+
+### Async Handler Patterns
+
+- Convert async handlers to sync by returning `void` and using `.then().catch(next)` if type conflicts occur
+- For async operations, use promise chains that call `next()` on success and `next(error)` on failure
+- Avoid `async/await` in handler signatures if it causes `RequestHandler` type mismatches
+
+## Examples
+
+<example>
+  // Good - Dependency injection with factory pattern
+  export function createGetUser(db: Kysely<DB>) {
+    return (req: Request, res: Response, next: NextFunction): void => {
+      ensureAuthenticated(req);
+      
+      const userService = new UserService(db);
+      userService.getUserById(req.user.id)
+        .then(user => res.json(user))
+        .catch(next);
+    };
+  }
+  
+  // Good - Assertion signature for type guard
+  function ensureAuthenticated(
+    req: Request
+  ): asserts req is Request & { user: NonNullable<Request['user']> } {
+    if (!req.user) {
+      throw new UnauthorizedError('User not authenticated');
+    }
+  }
+  
+  // Good - Optional property in module augmentation
+  declare module 'express' {
+    interface Request {
+      requestId?: string;
+      user?: User;
+    }
+  }
+  
+  // Good - No explicit return type when it conflicts
+  export function requireAuth(db: Kysely<DB>) {
+    return (req: Request, res: Response, next: NextFunction): void => {
+      // TypeScript infers the correct type
+    };
+  }
+</example>
+
+<example type="invalid">
+  // Bad - Using as any to bypass type checking
+  router.use(requireAuth() as any);
+  router.get('/profile', getProfile as any);
+  
+  // Bad - Non-null assertion hiding potential bugs
+  const userId = req.user!.id;
+  const data = req.validated!.body;
+  
+  // Bad - Storing untyped data in app.set
+  app.set('db', db);
+  const database = req.app.get('db') as Kysely<DB>;
+  
+  // Bad - Required property in module augmentation
+  declare module 'express' {
+    interface Request {
+      requestId: string; // Causes conflicts with RequestHandler
+    }
+  }
+  
+  // Bad - Forcing RequestHandler return type that conflicts
+  export function createHandler(): RequestHandler {
+    return async (req, res, next) => {}; // Type conflict!
+  }
+</example>
