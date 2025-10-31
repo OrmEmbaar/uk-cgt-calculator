@@ -82,10 +82,32 @@ export class VanguardParser extends BaseCSVParser {
     }
 
     /**
+     * Normalize dodgy characters and encoding issues in CSV content
+     */
+    private normalizeContent(content: string): string {
+        return (
+            content
+                // Replace Unicode replacement character (�) with empty string
+                .replace(/�/g, '')
+                // Normalize various quote characters to standard double quotes
+                .replace(/[""]/g, '"')
+                .replace(/['']/g, "'")
+                // Normalize various dash/hyphen characters to standard hyphen
+                .replace(/[–—]/g, '-')
+                // Normalize ellipsis
+                .replace(/…/g, '...')
+                // Remove other problematic control characters but keep newlines and tabs
+                .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, '')
+        );
+    }
+
+    /**
      * Parse Vanguard CSV content into transactions
      */
     async parse(csvContent: string): Promise<Transaction[]> {
-        const parseResult = this.parseCSV<VanguardRow>(csvContent);
+        // Normalize content to handle encoding issues
+        const normalizedContent = this.normalizeContent(csvContent);
+        const parseResult = this.parseCSV<VanguardRow>(normalizedContent);
 
         if (parseResult.errors.length > 0) {
             const firstError = parseResult.errors[0];
@@ -109,6 +131,7 @@ export class VanguardParser extends BaseCSVParser {
             date: DateTime;
             dateKey: string;
             asset: string;
+            assetFallback?: string; // Alternative identifier for matching (e.g., fund name-based identifier when ticker exists)
             details: TransactionDetails | null;
             amount: Decimal;
             quantity: Decimal;
@@ -138,12 +161,14 @@ export class VanguardParser extends BaseCSVParser {
                     if (tickerMatch) {
                         assetForFee = tickerMatch[1];
                     } else {
-                        for (const pattern of VanguardParser.FUND_PATTERNS) {
-                            if (pattern.test(row.Details)) {
-                                assetForFee = pattern.identifier;
-                                break;
-                            }
-                        }
+                        // Try to extract asset from fund name in fee description
+                        assetForFee = this.extractAssetFromFeeDescription(row.Details);
+                    }
+
+                    // Only include fee if it has an asset identifier
+                    // This filters out general account fees that shouldn't be associated with transactions
+                    if (!assetForFee) {
+                        continue; // Skip general account fees
                     }
 
                     parsedRows.push({
@@ -171,10 +196,21 @@ export class VanguardParser extends BaseCSVParser {
                 const price = amount.div(quantity);
                 const asset = this.extractAssetIdentifier(details.assetName);
 
+                // If asset is a ticker, also generate fallback identifier from fund name
+                // This helps match fees that don't include tickers
+                let assetFallback: string | undefined;
+                const hasTicker = VanguardParser.TICKER_REGEX.test(details.assetName);
+                if (hasTicker) {
+                    // Generate identifier from fund name (ignoring ticker)
+                    const nameWithoutTicker = details.assetName.replace(VanguardParser.TICKER_REGEX, '').trim();
+                    assetFallback = this.extractAssetIdentifier(nameWithoutTicker);
+                }
+
                 parsedRows.push({
                     date,
                     dateKey,
                     asset,
+                    assetFallback,
                     details,
                     amount,
                     quantity,
@@ -193,12 +229,18 @@ export class VanguardParser extends BaseCSVParser {
         for (const parsedRow of parsedRows) {
             if (parsedRow.isFee || !parsedRow.details) continue; // Skip fee rows
 
-            // Find matching fee: same date and same asset (or same date if asset unknown)
+            // Find matching fee: same date AND same asset (or fallback asset)
+            // Fees without asset identifiers are already filtered out as general account fees
             let fee = new Decimal(0);
             for (const feeRow of parsedRows) {
                 if (feeRow.isFee && feeRow.dateKey === parsedRow.dateKey && feeRow.feeAmount) {
-                    // Match by asset if fee has asset identifier, otherwise match by date only
-                    if (!feeRow.asset || feeRow.asset === parsedRow.asset) {
+                    // Match if fee asset matches transaction asset OR transaction's fallback asset
+                    // This handles cases where fees use fund names instead of tickers
+                    const matches =
+                        feeRow.asset === parsedRow.asset ||
+                        (parsedRow.assetFallback && feeRow.asset === parsedRow.assetFallback);
+
+                    if (matches) {
                         fee = fee.plus(feeRow.feeAmount);
                     }
                 }
@@ -328,7 +370,9 @@ export class VanguardParser extends BaseCSVParser {
             .replace(/\s+ex-U\.K\./gi, '')
             .replace(/\s+ex-Japan/gi, '')
             // Remove only truly generic/boilerplate words (legal entities, fund types, share class)
-            .replace(/\s+(Index|Fund|Accumulation|Distributing|Unit Trust|Vanguard|Funds|PLC)\b/gi, '')
+            // Match these words anywhere - at start (^), after whitespace (\s+), or with word boundaries
+            .replace(/^(Index|Fund|Accumulation|Distributing|Unit Trust|Vanguard|Funds|PLC|UCITS|ETF)\s+/gi, '')
+            .replace(/\s+(Index|Fund|Accumulation|Distributing|Unit Trust|Vanguard|Funds|PLC|UCITS|ETF)\b/gi, '')
             // Remove standalone hyphens between words but keep compound words
             .replace(/\s+-\s+/g, ' ')
             // Clean up multiple spaces
@@ -365,5 +409,43 @@ export class VanguardParser extends BaseCSVParser {
      */
     private isFeeRow(details: string): boolean {
         return VanguardParser.FEE_REGEX.test(details);
+    }
+
+    /**
+     * Extract asset identifier from fee description
+     * For transaction-specific fees like "ETF dealing fee (sell) Vanguard Funds PLC VANGUARD FTSE ALL-WORLD UCITS ETF"
+     * Returns empty string for general account fees like "Account Fee for the period..."
+     */
+    private extractAssetFromFeeDescription(details: string): string {
+        // Check if this matches any known fund pattern
+        for (const pattern of VanguardParser.FUND_PATTERNS) {
+            if (pattern.test(details)) {
+                return pattern.identifier;
+            }
+        }
+
+        // Look for fund name patterns in fee descriptions
+        // ETF dealing fees typically include the full fund name after "fee"
+        // e.g., "ETF dealing fee (sell) Vanguard Funds PLC VANGUARD FTSE ALL-WORLD UCITS ETF"
+        
+        // Try to extract the part after the fee type
+        const feeTypePatterns = [
+            /ETF dealing fee \([^)]+\)\s+(.+)$/i,
+            /dealing fee \([^)]+\)\s+(.+)$/i,
+            /fund fee \([^)]+\)\s+(.+)$/i,
+        ];
+
+        for (const pattern of feeTypePatterns) {
+            const match = details.match(pattern);
+            if (match && match[1]) {
+                const fundName = match[1].trim();
+                // Extract identifier from the fund name
+                return this.extractAssetIdentifier(fundName);
+            }
+        }
+
+        // If no fund name found in fee description, return empty string
+        // This indicates a general account fee
+        return '';
     }
 }

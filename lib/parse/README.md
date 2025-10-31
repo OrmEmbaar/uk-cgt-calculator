@@ -102,6 +102,102 @@ Vanguard occasionally renames funds, and CSV exports may have character encoding
 
 All variations are automatically mapped to the same asset identifier (`STERLING_SHORT-TERM_MONEY_MARKET`) via pattern matching, so buys and sells are correctly matched regardless of fund rebranding or character encoding issues.
 
+## IG Broker Format
+
+The `IGParser` expects CSV files exported from IG broker with the following columns:
+
+| Column            | Type        | Description                                | Example             |
+| ----------------- | ----------- | ------------------------------------------ | ------------------- |
+| `TextDate`        | DD-MM-YYYY  | Transaction date                           | `15-03-2024`        |
+| `Time`            | HH:MM:SS    | Transaction time                           | `10:30:45`          |
+| `Activity`        | string      | Activity type (parser filters for "TRADE") | `TRADE`             |
+| `Market`          | string      | Full market/asset name                     | `Apple Inc`         |
+| `Direction`       | BUY or SELL | Transaction direction                      | `BUY` or `SELL`     |
+| `Quantity`        | number      | Number of shares/units (may be signed)     | `100` or `-100`     |
+| `Price`           | number      | Price per unit in transaction currency     | `150.50`            |
+| `Currency`        | string      | 3-letter currency code                     | `USD`, `GBP`, `EUR` |
+| `Commission`      | number      | Commission fee in transaction currency     | `10.00`             |
+| `Charges`         | number      | Additional charges in transaction currency | `5.00`              |
+| `Conversion rate` | number      | Exchange rate to GBP                       | `0.79`, `1.0`       |
+
+### Example CSV
+
+```csv
+TextDate,Time,Activity,Market,Direction,Quantity,Price,Currency,Consideration,Commission,Charges,Cost/Proceeds,Conversion rate,Order type,Venue ID,Settled?,Settlement date,Order ID
+15-03-2024,10:30:45,TRADE,Apple Inc,BUY,100,150.50,USD,-15050.00,10,5,-15065.00,0.79,LIMIT,XNAS,Y,17-03-2024,TEST123
+20-06-2024,14:25:30,TRADE,Microsoft Corporation,SELL,50,200.00,USD,10000.00,8,2,9990.00,0.80,MARKET,XNAS,Y,22-06-2024,TEST456
+```
+
+### Key Features
+
+-   **Date/Time Parsing**: Combines separate date (DD-MM-YYYY) and time (HH:MM:SS) fields
+-   **Activity Filtering**: Automatically skips non-TRADE activities (deposits, dividends, etc.)
+-   **Price Calculation**: Calculates price from Consideration/Quantity (handles pence-traded securities automatically)
+-   **Fee Calculation**: Total fee = |Commission| + |Charges| (uses absolute values as IG uses negative for deductions)
+-   **Signed Quantities**: Uses absolute value of quantity (IG may use negative values for sells)
+-   **Full Asset Names**: Uses the complete market name from the "Market" column
+
+### Usage Example
+
+```typescript
+import { IGParser } from './lib/parse';
+import { calculateCGT } from './lib/cgt';
+
+// Parse IG CSV
+const parser = new IGParser();
+const transactions = await parser.parse(csvContent);
+
+// Calculate CGT
+const results = calculateCGT(transactions);
+```
+
+## DeGiro Broker Format
+
+The `DeGiroParser` expects CSV files exported from DeGiro broker with the following columns:
+
+| Column                     | Type       | Description                                        | Example         |
+| -------------------------- | ---------- | -------------------------------------------------- | --------------- |
+| `Date`                     | DD/MM/YYYY | Transaction date                                   | `15/03/2024`    |
+| `Time`                     | HH:MM      | Transaction time                                   | `10:30`         |
+| `Product`                  | string     | Product/asset name                                 | `Test Fund`     |
+| `ISIN`                     | string     | International Securities Identification Number     | `IE00TEST0001`  |
+| `Quantity`                 | number     | Number of shares (negative = sell, positive = buy) | `100` or `-100` |
+| `Price`                    | number     | Price per unit in local currency                   | `150.50`        |
+| `Exchange rate`            | number     | Exchange rate to GBP                               | `1.26`, `1.0`   |
+| `Transaction and/or third` | number     | Transaction fee                                    | `10.00`         |
+
+**Note:** DeGiro CSVs contain unnamed columns for currency codes (e.g., USD, GBP, EUR). The parser automatically detects the transaction currency from these columns.
+
+### Example CSV
+
+```csv
+Date,Time,Product,ISIN,Reference,Venue,Quantity,Price,,Local value,,Value,,Exchange rate,Transaction and/or third,,Total,,Order ID
+15/03/2024,10:30,Test Fund,IE00TEST0001,LSE,XLON,100,150.50,USD,-15050.00,USD,-11900.00,GBP,1.26,-10.00,GBP,-11910.00,GBP,test-id-123
+20/06/2024,14:25,Test ETF,IE00TEST0002,LSE,XLON,-50,200.00,USD,10000.00,USD,8000.00,GBP,1.25,-5.50,GBP,7994.50,GBP,test-id-456
+```
+
+### Key Features
+
+-   **Date/Time Parsing**: Combines separate date (DD/MM/YYYY) and time (HH:MM) fields
+-   **Signed Quantities**: Negative quantity = SELL, Positive quantity = BUY
+-   **Currency Detection**: Automatically extracts currency from unnamed CSV columns
+-   **Fee Handling**: Parses fees from "Transaction and/or third" column
+-   **Product Names**: Uses the "Product" column as asset identifier
+
+### Usage Example
+
+```typescript
+import { DeGiroParser } from './lib/parse';
+import { calculateCGT } from './lib/cgt';
+
+// Parse DeGiro CSV
+const parser = new DeGiroParser();
+const transactions = await parser.parse(csvContent);
+
+// Calculate CGT
+const results = calculateCGT(transactions);
+```
+
 ## Creating Custom Parsers
 
 Extend `BaseCSVParser` to create parsers for broker-specific CSV formats:

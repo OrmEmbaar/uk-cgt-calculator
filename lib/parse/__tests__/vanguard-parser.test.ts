@@ -460,5 +460,70 @@ describe('VanguardParser', () => {
             expect(transactions[3].type).toBe('SELL');
             expect(transactions[3].fee.equals(new Decimal(7.5))).toBe(true);
         });
+
+        it('should NOT add general account fees to transactions', async () => {
+            // Test the scenario from the user's concern (lines 265-266 of vanguard.csv)
+            const csv = `Date,Details,Amount,Balance
+08/04/2021,Account Fee for the period 02-Jan-2021 to 01-Apr-2021,-82.49,"25,384.57"
+08/04/2021,Sold 58.6200 Vanguard ESG Developed World All Cap Equity Index Fund - Pound Sterling Accumulation Shares,"19,226.57","44,611.14"`;
+
+            const parser = new VanguardParser();
+            const transactions = await parser.parse(csv);
+
+            // Should parse the sell transaction but NOT include the account fee
+            expect(transactions).toHaveLength(1);
+            expect(transactions[0].type).toBe('SELL');
+            expect(transactions[0].quantity.equals(new Decimal('58.62'))).toBe(true);
+            expect(transactions[0].fee.equals(new Decimal(0))).toBe(true); // Fee should be 0, not 82.49
+        });
+
+        it('should add transaction-specific ETF dealing fees but not account fees', async () => {
+            // Test both scenarios together (using newer fee format with ticker from 2024 CSV)
+            const csv = `Date,Details,Amount,Balance
+08/04/2021,Account Fee for the period 02-Jan-2021 to 01-Apr-2021,-82.49,"25,384.57"
+08/04/2021,Sold 58.6200 Vanguard ESG Developed World All Cap Equity Index Fund - Pound Sterling Accumulation Shares,"19,226.57","44,611.14"
+29/10/2024,Sold 830 FTSE All-World UCITS ETF - Distributing (VWRL),"88,771.82","172,514.34"
+29/10/2024,ETF dealing fee (sell) FTSE All-World UCITS ETF - Distributing (VWRL),-7.50,"172,506.84"`;
+
+            const parser = new VanguardParser();
+            const transactions = await parser.parse(csv);
+
+            expect(transactions).toHaveLength(2);
+
+            // First transaction: OEIC sell with no fee (account fee should be ignored)
+            expect(transactions[0].type).toBe('SELL');
+            expect(transactions[0].quantity.equals(new Decimal('58.62'))).toBe(true);
+            expect(transactions[0].fee.equals(new Decimal(0))).toBe(true);
+
+            // Second transaction: ETF sell with dealing fee (should be included)
+            expect(transactions[1].type).toBe('SELL');
+            expect(transactions[1].asset).toBe('VWRL');
+            expect(transactions[1].quantity.equals(new Decimal('830'))).toBe(true);
+            expect(transactions[1].fee.equals(new Decimal(7.5))).toBe(true);
+        });
+
+        it('should normalize dodgy characters and encoding issues', async () => {
+            // Test with actual dodgy characters from CSV (� replacement character, fancy quotes, etc.)
+            const csv = `Date,Details,Amount,Balance
+08/04/2021,Sold 58.6200 Vanguard ESG Developed World All Cap Equity Index Fund - �Pound Sterling� Accumulation Shares,"19,226.57","44,611.14"
+15/03/2020,Bought 100 S&P 500 UCITS ETF – Distributing (VUSA),"-5,000.00","10,000.00"`;
+
+            const parser = new VanguardParser();
+            const transactions = await parser.parse(csv);
+
+            expect(transactions).toHaveLength(2);
+
+            // First transaction: Should parse despite dodgy characters
+            expect(transactions[0].type).toBe('SELL');
+            expect(transactions[0].quantity.equals(new Decimal('58.62'))).toBe(true);
+            expect(transactions[0].assetFullName).toBe(
+                'Vanguard ESG Developed World All Cap Equity Index Fund - Pound Sterling Accumulation Shares'
+            );
+
+            // Second transaction: Should normalize em-dash to hyphen
+            expect(transactions[1].type).toBe('BUY');
+            expect(transactions[1].asset).toBe('VUSA');
+            expect(transactions[1].quantity.equals(new Decimal('100'))).toBe(true);
+        });
     });
 });

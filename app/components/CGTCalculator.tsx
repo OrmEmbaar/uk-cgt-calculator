@@ -4,12 +4,15 @@ import { useState, useCallback, useMemo } from 'react';
 import Decimal from 'decimal.js';
 import { RawCSVParser } from '@/lib/parse/raw-parser';
 import { VanguardParser } from '@/lib/parse/vanguard-parser';
+import { IGParser } from '@/lib/parse/ig-parser';
+import { DeGiroParser } from '@/lib/parse/degiro-parser';
 import { calculateCGTMultipleAssets } from '@/lib/cgt/calculator';
 import { Transaction, CGTCalculationResult } from '@/lib/cgt/types';
 import ResultsTable from './ResultsTable';
 import TaxYearSummary from './TaxYearSummary';
 import { resultsToCSV, downloadCSV } from '@/lib/utils/export-csv';
 import { transactionsToCGTCalcFormat, downloadCGTCalcFormat } from '@/lib/utils/export-cgtcalc';
+import { transactionsToRawCSV, downloadRawCSV } from '@/lib/utils/convert-to-raw';
 import { getUniqueTaxYears, isInTaxYear } from '@/lib/utils/tax-year';
 import { detectCSVFormat, CSVFormat } from '@/lib/utils/detect-parser';
 
@@ -37,7 +40,7 @@ export default function CGTCalculator() {
 
             if (format === 'unknown') {
                 throw new Error(
-                    'Unable to detect CSV format. Expected either Raw CSV (with columns: date, type, asset, quantity, price, currency, exchangeRate, fee) or Vanguard format (with columns: Date, Details, Amount, Balance).'
+                    'Unable to detect CSV format. Supported formats: Raw CSV, Vanguard, IG, and DeGiro. Please check your CSV headers match one of these formats.'
                 );
             }
 
@@ -46,9 +49,17 @@ export default function CGTCalculator() {
             if (format === 'raw') {
                 const parser = new RawCSVParser();
                 parsedTransactions = await parser.parse(csvContent);
-            } else {
+            } else if (format === 'vanguard') {
                 const parser = new VanguardParser();
                 parsedTransactions = await parser.parse(csvContent);
+            } else if (format === 'ig') {
+                const parser = new IGParser();
+                parsedTransactions = await parser.parse(csvContent);
+            } else if (format === 'degiro') {
+                const parser = new DeGiroParser();
+                parsedTransactions = await parser.parse(csvContent);
+            } else {
+                throw new Error(`Unsupported format: ${format}`);
             }
 
             setTransactions(parsedTransactions);
@@ -181,6 +192,12 @@ export default function CGTCalculator() {
         downloadCGTCalcFormat(content);
     };
 
+    const handleDownloadRawCSV = () => {
+        if (transactions.length === 0) return;
+        const filename = `${fileName.replace('.csv', '')}-raw.csv`;
+        downloadRawCSV(transactions, filename);
+    };
+
     return (
         <div className="w-full space-y-6">
             <div className="space-y-4">
@@ -264,7 +281,10 @@ export default function CGTCalculator() {
                         <p className="text-sm text-blue-800 dark:text-blue-200">
                             Detected format:{' '}
                             <span className="font-semibold">
-                                {detectedFormat === 'raw' ? 'Raw CSV' : 'Vanguard'}
+                                {detectedFormat === 'raw' && 'Raw CSV'}
+                                {detectedFormat === 'vanguard' && 'Vanguard'}
+                                {detectedFormat === 'ig' && 'IG'}
+                                {detectedFormat === 'degiro' && 'DeGiro'}
                             </span>
                             {' · '}
                             Found {transactions.length} transaction{transactions.length !== 1 ? 's' : ''}
@@ -350,13 +370,23 @@ export default function CGTCalculator() {
                     </div>
 
                     {/* Action buttons */}
-                    <div className="flex justify-between">
-                        <button
-                            onClick={handleDownloadCGTCalcFormat}
-                            className="rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
-                        >
-                            Export for Testing
-                        </button>
+                    <div className="flex flex-col gap-3 sm:flex-row sm:justify-between">
+                        <div className="flex gap-3">
+                            {detectedFormat !== 'raw' && (
+                                <button
+                                    onClick={handleDownloadRawCSV}
+                                    className="rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                                >
+                                    Export as Raw CSV
+                                </button>
+                            )}
+                            <button
+                                onClick={handleDownloadCGTCalcFormat}
+                                className="rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                            >
+                                Export for Testing
+                            </button>
+                        </div>
                         <div className="flex gap-3">
                             <button
                                 onClick={() => {

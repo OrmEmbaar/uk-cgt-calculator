@@ -1,7 +1,7 @@
 /**
  * Detect CSV format based on column headers
  */
-export type CSVFormat = 'raw' | 'vanguard' | 'unknown';
+export type CSVFormat = 'raw' | 'vanguard' | 'ig' | 'degiro' | 'unknown';
 
 /**
  * Detect which parser should be used for a CSV file
@@ -16,6 +16,31 @@ export function detectCSVFormat(csvContent: string): CSVFormat {
 
     // Normalize: lowercase and remove whitespace
     const normalizedHeaders = headerLine.toLowerCase().replace(/\s+/g, '');
+
+    // DeGiro format: Date,Time,Product,ISIN,Quantity,Price,Exchange rate
+    const hasDeGiroHeaders =
+        normalizedHeaders.includes('date') &&
+        normalizedHeaders.includes('time') &&
+        normalizedHeaders.includes('product') &&
+        normalizedHeaders.includes('isin') &&
+        normalizedHeaders.includes('exchangerate');
+
+    if (hasDeGiroHeaders) {
+        return 'degiro';
+    }
+
+    // IG format: TextDate,Time,Activity,Market,Direction,Quantity,Price,Currency,Commission,Charges,Conversion rate
+    const hasIGHeaders =
+        normalizedHeaders.includes('textdate') &&
+        normalizedHeaders.includes('time') &&
+        normalizedHeaders.includes('activity') &&
+        normalizedHeaders.includes('market') &&
+        normalizedHeaders.includes('direction') &&
+        normalizedHeaders.includes('conversionrate');
+
+    if (hasIGHeaders) {
+        return 'ig';
+    }
 
     // Vanguard format: Date,Details,Amount,Balance
     const hasVanguardHeaders =
